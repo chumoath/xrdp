@@ -65,7 +65,7 @@ rdpCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC,
             int srcx, int srcy, int w, int h, int dstx, int dsty)
 {
     rdpPtr dev;
-    RegionPtr rv;
+    // RegionPtr rv;
     RegionRec clip_reg;
     RegionRec reg;
     int cd;
@@ -87,12 +87,13 @@ rdpCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC,
         rdpRegionIntersect(&reg, &clip_reg, &reg);
     }
     /* do original call */
-    rv = rdpCopyAreaOrg(pSrc, pDst, pGC, srcx, srcy, w, h, dstx, dsty);
+    // rv = rdpCopyAreaOrg(pSrc, pDst, pGC, srcx, srcy, w, h, dstx, dsty);
     if (cd != XRDP_CD_NODRAW)
     {
         rdpClientConAddAllReg(dev, &reg, pDst);
     }
     rdpRegionUninit(&clip_reg);
     rdpRegionUninit(&reg);
-    return rv;
+    // return rv;
+    return NULL;
 }

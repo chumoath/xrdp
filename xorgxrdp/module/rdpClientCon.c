@@ -868,7 +868,8 @@ rdpClientConResizeAllMemoryAreas(rdpPtr dev, rdpClientCon *clientCon)
     {
         /* Set the device size, regardless of the 'allow_screen_resize'
          * setting */
-        ScrnInfoPtr pScrn = xf86Screens[dev->pScreen->myNum];
+        // ScrnInfoPtr pScrn = xf86Screens[dev->pScreen->myNum];
+        ScrnInfoPtr pScrn = g_pScrn;
         int mmwidth = PixelToMM(width, pScrn->xDpi);
         int mmheight = PixelToMM(height, pScrn->yDpi);
         int ok;

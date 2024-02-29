@@ -157,6 +157,7 @@ rdpPreInit(ScrnInfoPtr pScrn, int flags)
     DisplayModePtr mode;
     rdpPtr dev;
 
+    g_pScrn = pScrn;
     LLOGLN(0, ("rdpPreInit:"));
     if (flags & PROBE_DETECT)
     {
@@ -190,8 +191,10 @@ rdpPreInit(ScrnInfoPtr pScrn, int flags)
     }
 #endif
 
-    dev->width = 800;
-    dev->height = 600;
+    // dev->width = 800;
+    // dev->height = 600;
+    dev->width = 1920;
+    dev->height = 1080;
 
     pScrn->monitor = pScrn->confScreen->monitor;
     pScrn->bitsPerPixel = 32;
@@ -352,7 +355,8 @@ rdpResizeSession(rdpPtr dev, int width, int height)
     Bool ok;
 
     LLOGLN(0, ("rdpResizeSession: width %d height %d", width, height));
-    pScrn = xf86Screens[dev->pScreen->myNum];
+    // pScrn = xf86Screens[dev->pScreen->myNum];
+    pScrn = g_pScrn;
     mmwidth = PixelToMM(width, pScrn->xDpi);
     mmheight = PixelToMM(height, pScrn->yDpi);
 
@@ -470,25 +474,25 @@ rdpDeferredRandR(OsTimerPtr timer, CARD32 now, pointer arg)
     pRRScrPriv->rrGetPanning         = rdpRRGetPanning;
     pRRScrPriv->rrSetPanning         = rdpRRSetPanning;
 
-    rdpResizeSession(dev, 1024, 768);
+    // rdpResizeSession(dev, 1024, 768);
 
-    envvar = getenv("XRDP_START_WIDTH");
-    if (envvar != 0)
-    {
-        width = atoi(envvar);
-        if ((width >= 16) && (width < 8192))
-        {
-            envvar = getenv("XRDP_START_HEIGHT");
-            if (envvar != 0)
-            {
-                height = atoi(envvar);
-                if ((height >= 16) && (height < 8192))
-                {
-                    rdpResizeSession(dev, width, height);
-                }
-            }
-        }
-    }
+    // envvar = getenv("XRDP_START_WIDTH");
+    // if (envvar != 0)
+    // {
+    //     width = atoi(envvar);
+    //     if ((width >= 16) && (width < 8192))
+    //     {
+    //         envvar = getenv("XRDP_START_HEIGHT");
+    //         if (envvar != 0)
+    //         {
+    //             height = atoi(envvar);
+    //             if ((height >= 16) && (height < 8192))
+    //             {
+    //                 rdpResizeSession(dev, width, height);
+    //             }
+    //         }
+    //     }
+    // }
 
     RRScreenSetSizeRange(pScreen, 256, 256, 16 * 1024, 16 * 1024);
     rdpRRSetRdpOutputs(dev);
@@ -584,6 +588,39 @@ rdpCreateScreenResources(ScreenPtr pScreen)
     return TRUE;
 }
 
+
+static Bool rdpSetOutputSource(ScreenPtr pScreen, RRProviderPtr provider, RRProviderPtr source_provider)
+{
+    SetRootClip(source_provider->pScreen, ROOT_CLIP_NONE);
+
+    AttachOutputGPU(source_provider->pScreen, pScreen);
+
+    provider->output_source = source_provider;
+
+    SetRootClip(source_provider->pScreen, ROOT_CLIP_FULL);
+
+    return TRUE;
+}
+
+static Bool rdpSetSharedPixmapBacking(PixmapPtr ppix, void *fd_handle)
+{
+    ppix->master_pixmap = NULL;
+    return TRUE;
+}
+
+static Bool rdpCrtcSetScanoutPixmap(RRCrtcPtr randr_crtc, PixmapPtr pixmap)
+{
+    ScreenPtr pScreen;
+    rdpPtr dev;
+
+    if (!pixmap) return TRUE;
+
+    pScreen = randr_crtc->pScreen;
+    dev = rdpGetDevFromScreen(pScreen);
+    pixmap->devPrivate.ptr = dev->pfbMemory;
+    return TRUE;
+}
+
 /*****************************************************************************/
 static Bool
 #if XORG_VERSION_CURRENT < XORG_VERSION_NUMERIC(1, 13, 0, 0, 0)
@@ -598,7 +635,8 @@ rdpScreenInit(ScreenPtr pScreen, int argc, char **argv)
     Bool vis_found;
     PictureScreenPtr ps;
 
-    pScrn = xf86Screens[pScreen->myNum];
+    // pScrn = xf86Screens[pScreen->myNum];
+    pScrn = g_pScrn;
     dev = XRDPPTR(pScrn);
 
     dev->pScreen = pScreen;
@@ -767,7 +805,7 @@ rdpScreenInit(ScreenPtr pScreen, int argc, char **argv)
     RegisterBlockAndWakeupHandlers(rdpBlockHandler1, rdpWakeupHandler1, pScreen);
 
     g_randr_timer = TimerSet(g_randr_timer, 0, 10, rdpDeferredRandR, pScreen);
-    g_damage_timer = TimerSet(g_damage_timer, 0, 10, rdpDeferredDamage, pScreen);
+    // g_damage_timer = TimerSet(g_damage_timer, 0, 10, rdpDeferredDamage, pScreen);
 
     if (rdpClientConInit(dev) != 0)
     {
@@ -794,6 +832,18 @@ rdpScreenInit(ScreenPtr pScreen, int argc, char **argv)
     }
 
     LLOGLN(0, ("rdpScreenInit: out"));
+
+    RRScreenInit(pScreen);
+
+    RRProviderPtr provider = RRProviderCreate(pScreen, "rdp", 3);
+    provider->capabilities |= RR_Capability_SinkOutput;
+    provider->capabilities |= RR_Capability_SourceOutput;
+
+    rrScrPrivPtr pScrPriv = rrGetScrPriv(pScreen);
+    pScrPriv->rrProviderSetOutputSource = rdpSetOutputSource;
+    pScrPriv->rrCrtcSetScanoutPixmap = rdpCrtcSetScanoutPixmap;
+
+    pScreen->SetSharedPixmapBacking = rdpSetSharedPixmapBacking;
     return TRUE;
 }
 
@@ -936,8 +986,15 @@ rdpProbe(DriverPtr drv, int flags)
             LLOGLN(0, ("rdpProbe: found DRI3 xorg.conf value [%s]", val));
 #endif
         }
+        platformSlotClaimed = FALSE;
+        pciSlotClaimed = FALSE;
         entity = xf86ClaimFbSlot(drv, 0, dev_sections[i], 1);
-        pscrn = xf86ConfigFbEntity(pscrn, 0, entity, 0, 0, 0, 0);
+        // platformSlotClaimed = TRUE;
+        pciSlotClaimed = TRUE;
+        fbSlotClaimed = FALSE;
+
+        // pscrn = xf86ConfigFbEntity(pscrn, 0, entity, 0, 0, 0, 0);
+        pscrn = xf86ConfigFbEntity(pscrn, 1, entity, 0, 0, 0, 0);
         if (pscrn)
         {
             LLOGLN(10, ("rdpProbe: found screen"));

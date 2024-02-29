@@ -69,7 +69,8 @@ rdpRRRegisterSize(ScreenPtr pScreen, int width, int height)
     ScrnInfoPtr pScrn;
 
     LLOGLN(0, ("rdpRRRegisterSize: width %d height %d", width, height));
-    pScrn = xf86Screens[pScreen->myNum];
+    // pScrn = xf86Screens[pScreen->myNum];
+    pScrn = g_pScrn;
     mmwidth = PixelToMM(width, pScrn->xDpi);
     mmheight = PixelToMM(height, pScrn->yDpi);
     pSize = RRRegisterSize(pScreen, width, height, mmwidth, mmheight);
@@ -203,8 +204,10 @@ rdpRRScreenSetSize(ScreenPtr pScreen, CARD16 width, CARD16 height,
     xf86EnableDisableFBAccess(pScreen->myNum, FALSE);
     xf86EnableDisableFBAccess(pScreen->myNum, TRUE);
 #else
-    xf86EnableDisableFBAccess(xf86Screens[pScreen->myNum], FALSE);
-    xf86EnableDisableFBAccess(xf86Screens[pScreen->myNum], TRUE);
+    // xf86EnableDisableFBAccess(xf86Screens[pScreen->myNum], FALSE);
+    // xf86EnableDisableFBAccess(xf86Screens[pScreen->myNum], TRUE);
+    xf86EnableDisableFBAccess(g_pScrn, FALSE);
+    xf86EnableDisableFBAccess(g_pScrn, TRUE);
 #endif
     return TRUE;
 }

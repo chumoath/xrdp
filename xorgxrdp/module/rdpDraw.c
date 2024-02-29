@@ -404,6 +404,12 @@ rdpGetRootWindowPtr(ScreenPtr pScreen)
 #endif
 }
 
+ScrnInfoPtr g_pScrn = NULL;
+
+extern _X_EXPORT RegionPtr
+rdpCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC,
+            int srcx, int srcy, int w, int h, int dstx, int dsty);
+
 /******************************************************************************/
 rdpPtr
 rdpGetDevFromScreen(ScreenPtr pScreen)
@@ -413,11 +419,14 @@ rdpGetDevFromScreen(ScreenPtr pScreen)
 
     if (pScreen == NULL)
     {
-        pScrn = xf86Screens[0];
+        // pScrn = xf86Screens[0];
+        pScrn = g_pScrn;
     }
     else
     {
-        pScrn = xf86Screens[pScreen->myNum];
+        // pScrn = xf86Screens[pScreen->myNum];
+        pScrn = g_pScrn;
+        pScreen->DPMS = (void *)rdpCopyArea;
     }
     dev = XRDPPTR(pScrn);
     return dev;

@@ -106,5 +106,5 @@ extern _X_EXPORT WindowPtr
 rdpGetRootWindowPtr(ScreenPtr pScreen);
 extern _X_EXPORT rdpPtr
 rdpGetDevFromScreen(ScreenPtr pScreen);
-
+extern _X_EXPORT ScrnInfoPtr g_pScrn;
 #endif
